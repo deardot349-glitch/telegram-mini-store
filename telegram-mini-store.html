@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>UpTop Market — Mini Store</title>
+  <style>
+    :root{--bg:#f6f8fb;--card:#ffffff;--accent:#2d9cdb;--muted:#6b7280}
+    *{box-sizing:border-box}
+    body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial; margin:0; background:var(--bg); color:#111}
+    header{background:linear-gradient(90deg,#fff 0%, #f0f6ff 100%); padding:18px 20px; display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 0 rgba(0,0,0,0.04)}
+    .brand{display:flex; gap:12px; align-items:center}
+    .logo{width:48px; height:48px; border-radius:10px; background:linear-gradient(135deg,var(--accent),#6ad2ff); display:flex;align-items:center;justify-content:center; color:white; font-weight:700}
+    h1{font-size:18px;margin:0}
+    p.subtitle{margin:0;color:var(--muted);font-size:13px}
+    main{padding:20px}
+    .controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+    button{background:var(--accent);color:white;border:0;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600}
+    button.ghost{background:transparent;color:var(--accent);border:1px solid rgba(45,156,219,0.18)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px}
+    .card{background:var(--card);min-height:120px;border-radius:12px;padding:12px;box-shadow:0 6px 18px rgba(15,23,42,0.06);display:flex;flex-direction:column;gap:6px;cursor:text;outline: none}
+    .card:focus{box-shadow:0 10px 30px rgba(15,23,42,0.08);transform:translateY(-2px)}
+    .placeholder{color:var(--muted);font-size:13px}
+    .meta{margin-top:auto;display:flex;justify-content:space-between;align-items:center}
+    .meta small{color:var(--muted)}
+    footer{padding:18px 20px;color:var(--muted);font-size:13px;text-align:center}
+    @media (max-width:520px){.grid{grid-template-columns:repeat(2,1fr)}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo">UM</div>
+      <div>
+        <h1 id="storeName">UpTop Market</h1>
+        <p class="subtitle">Your mini store — tap cards to fill them</p>
+      </div>
+    </div>
+    <div>
+      <button id="saveBtn">Save</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="controls">
+      <button id="sendBtn">Send to bot</button>
+      <button class="ghost" id="resetBtn">Reset</button>
+      <div style="margin-left:auto;color:var(--muted);font-size:13px">Editable cards • Saved locally</div>
+    </div>
+
+    <div class="grid" id="cards"></div>
+  </main>
+
+  <footer>
+    This is a simple Telegram Mini App UI example. Works inside Telegram mobile & desktop.
+  </footer>
+
+  <script>
+    const STORE_KEY = 'mini_store_cards_v1'
+    const storeNameEl = document.getElementById('storeName')
+    // 10 blank cards by default
+    const defaultCards = Array.from({length:10}, (_,i)=>({id:i+1,title:'',note:''}))
+
+    function createCardEl(card){
+      const el = document.createElement('div')
+      el.className = 'card'
+      el.tabIndex = 0
+
+      const title = document.createElement('div')
+      title.contentEditable = true
+      title.className = 'title'
+      title.style.fontWeight = '700'
+      title.style.fontSize = '15px'
+      title.dataset.placeholder = 'Tap to add title'
+      title.innerText = card.title || ''
+
+      const note = document.createElement('div')
+      note.contentEditable = true
+      note.className = 'note'
+      note.dataset.placeholder = 'Tap to add note'
+      note.style.fontSize = '13px'
+      note.style.color = 'var(--muted)'
+      note.innerText = card.note || ''
+
+      const meta = document.createElement('div')
+      meta.className = 'meta'
+      const small = document.createElement('small')
+      small.innerText = `Card #${card.id}`
+      const clear = document.createElement('button')
+      clear.textContent = 'Clear'
+      clear.style.background='transparent'
+      clear.style.border='0'
+      clear.style.color='var(--accent)'
+      clear.style.cursor='pointer'
+      clear.onclick = (ev)=>{
+        ev.stopPropagation(); title.innerText=''; note.innerText=''; saveCards()
+      }
+
+      meta.appendChild(small)
+      meta.appendChild(clear)
+
+      el.appendChild(title)
+      el.appendChild(note)
+      el.appendChild(meta)
+
+      // placeholder behaviour for contentEditable
+      function togglePlaceholder(node){
+        if(node.innerText.trim()==='') node.classList.add('placeholder')
+        else node.classList.remove('placeholder')
+      }
+      togglePlaceholder(title); togglePlaceholder(note)
+      title.addEventListener('input',()=>{togglePlaceholder(title); saveCards()})
+      note.addEventListener('input',()=>{togglePlaceholder(note); saveCards()})
+
+      return el
+    }
+
+    function render(cards){
+      const container = document.getElementById('cards')
+      container.innerHTML = ''
+      cards.forEach(c=> container.appendChild(createCardEl(c)))
+    }
+
+    function loadCards(){
+      try{
+        const raw = localStorage.getItem(STORE_KEY)
+        if(!raw) return defaultCards
+        const parsed = JSON.parse(raw)
+        if(!Array.isArray(parsed)) return defaultCards
+        return parsed
+      }catch(e){return defaultCards}
+    }
+
+    function saveCards(){
+      const nodes = Array.from(document.querySelectorAll('.card'))
+      const data = nodes.map((node,i)=>({id:i+1,title: node.querySelector('.title').innerText.trim(), note: node.querySelector('.note').innerText.trim()}))
+      localStorage.setItem(STORE_KEY, JSON.stringify(data))
+    }
+
+    document.getElementById('saveBtn').addEventListener('click', ()=>{ saveCards(); alert('Saved locally') })
+    document.getElementById('resetBtn').addEventListener('click', ()=>{ if(confirm('Reset all cards?')){ localStorage.removeItem(STORE_KEY); render(defaultCards) } })
+
+    document.getElementById('sendBtn').addEventListener('click', ()=>{
+      saveCards()
+      const payload = { store: storeNameEl.innerText, cards: loadCards() }
+      if(window.Telegram && Telegram.WebApp && Telegram.WebApp.sendData){
+        // send data back to the bot as a string
+        Telegram.WebApp.sendData(JSON.stringify(payload))
+      } else {
+        // not inside Telegram, fallback
+        console.log('Would send to bot:', payload)
+        alert('Not running inside Telegram — check console for payload')
+      }
+    })
+
+    // init
+    const cards = loadCards()
+    render(cards)
+
+    // Telegram WebApp init (if present)
+    if(window.Telegram && Telegram.WebApp){
+      try{ Telegram.WebApp.ready(); Telegram.WebApp.expand(); }catch(e){}
+    }
+  </script>
+</body>
+</html>
